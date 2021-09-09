@@ -26,12 +26,7 @@ int main() {
     int frames = 0;
 
     obb_t obb;
-    memcpy(&obb.center, (vec3){0.0f, 0.0f, 0.0f}, sizeof(vec3));
-    memcpy(&obb.half_side, (vec3){0.5f, 0.5f, 0.5f}, sizeof(vec3));
-    memcpy(&obb.axis[0], (vec3){1.0f, 0.0f, 0.0f}, sizeof(vec3));
-    memcpy(&obb.axis[1], (vec3){0.0f, 1.0f, 0.0f}, sizeof(vec3));
-    memcpy(&obb.axis[2], (vec3){0.0f, 0.0f, 1.0f}, sizeof(vec3));
-    buffer_obb(&obb);
+    init_obb(&obb);
 
     int shader = load_shader("shaders/vertex.glsl", "shaders/fragment.glsl");
     glUseProgram(shader);
@@ -73,12 +68,16 @@ int main() {
         GLint projection_loc = glGetUniformLocation(shader, "projection");
         glUniformMatrix4fv(projection_loc, 1, GL_FALSE, (float *)projection);
 
+        roate_obb(&obb, 0, time_elapsed, time_elapsed);
+        buffer_obb(&obb);
+
         draw_obb(&obb, shader);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+    free_obb(&obb);
     glDeleteProgram(shader);
 
     deinit();
