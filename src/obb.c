@@ -32,55 +32,6 @@ void init_obb(obb_t *obb) {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(edges), edges, GL_STATIC_DRAW);
 }
 
-void buffer_obb(obb_t *obb) {
-    float *o = obb->center;
-    float *hs = obb->half_side;
-
-    float *x_axis = obb->axis[0];
-    float *y_axis = obb->axis[1];
-    float *z_axis = obb->axis[2];
-
-    vec3 vertices[14] = {
-        {o[0] - hs[0], o[1] - hs[1], o[2] - hs[2]},
-        {o[0] + hs[0], o[1] - hs[1], o[2] - hs[2]},
-        {o[0] + hs[0], o[1] + hs[1], o[2] - hs[2]},
-        {o[0] - hs[0], o[1] + hs[1], o[2] - hs[2]},
-        {o[0] - hs[0], o[1] - hs[1], o[2] + hs[2]},
-        {o[0] + hs[0], o[1] - hs[1], o[2] + hs[2]},
-        {o[0] + hs[0], o[1] + hs[1], o[2] + hs[2]},
-        {o[0] - hs[0], o[1] + hs[1], o[2] + hs[2]},
-        // Axis
-        {o[0] + x_axis[0], o[1] + x_axis[1], o[2] + x_axis[2]},
-        {o[0] - x_axis[0], o[1] - x_axis[1], o[2] - x_axis[2]},
-        {o[0] + y_axis[0], o[1] + y_axis[1], o[2] + y_axis[2]},
-        {o[0] - y_axis[0], o[1] - y_axis[1], o[2] - y_axis[2]},
-        {o[0] + z_axis[0], o[1] + z_axis[1], o[2] + z_axis[2]},
-        {o[0] - z_axis[0], o[1] - z_axis[1], o[2] - z_axis[2]},
-    };
-
-    // Rotate corners by model matrix
-
-    vec4 v, t;
-    for (int i = 0; i < 8; i++) {
-        float *vertex = vertices[i];
-
-        memcpy(t, vertex, sizeof(vec3));
-        t[3] = 1.0f;
-
-        mat4x4_mul_vec4(v, obb->model, t);
-        vertex[0] = v[0];
-        vertex[1] = v[1];
-        vertex[2] = v[2];
-    }
-
-    // Positions
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void *)0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, obb->vbo[0]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
-}
-
 void roate_obb(obb_t *obb, float yaw, float pitch, float roll) {
     mat4x4_identity(obb->model);
 
@@ -108,7 +59,70 @@ void roate_obb(obb_t *obb, float yaw, float pitch, float roll) {
     }
 }
 
+void position_obb(obb_t *obb, float x, float y, float z) {
+    obb->center[0] = x;
+    obb->center[1] = y;
+    obb->center[2] = z;
+}
+
+void resize_obb(obb_t *obb, float x, float y, float z) {
+    obb->half_side[0] = x;
+    obb->half_side[1] = y;
+    obb->half_side[2] = z;
+}
+
+void buffer_obb(obb_t *obb) {
+    float *o = obb->center;
+    float *hs = obb->half_side;
+
+    float *x_axis = obb->axis[0];
+    float *y_axis = obb->axis[1];
+    float *z_axis = obb->axis[2];
+
+    vec3 vertices[14] = {
+        {0 - hs[0], 0 - hs[1], 0 - hs[2]},
+        {0 + hs[0], 0 - hs[1], 0 - hs[2]},
+        {0 + hs[0], 0 + hs[1], 0 - hs[2]},
+        {0 - hs[0], 0 + hs[1], 0 - hs[2]},
+        {0 - hs[0], 0 - hs[1], 0 + hs[2]},
+        {0 + hs[0], 0 - hs[1], 0 + hs[2]},
+        {0 + hs[0], 0 + hs[1], 0 + hs[2]},
+        {0 - hs[0], 0 + hs[1], 0 + hs[2]},
+        // Axis
+        {o[0] + x_axis[0], o[1] + x_axis[1], o[2] + x_axis[2]},
+        {o[0] - x_axis[0], o[1] - x_axis[1], o[2] - x_axis[2]},
+        {o[0] + y_axis[0], o[1] + y_axis[1], o[2] + y_axis[2]},
+        {o[0] - y_axis[0], o[1] - y_axis[1], o[2] - y_axis[2]},
+        {o[0] + z_axis[0], o[1] + z_axis[1], o[2] + z_axis[2]},
+        {o[0] - z_axis[0], o[1] - z_axis[1], o[2] - z_axis[2]},
+    };
+
+    // Rotate corners by model matrix
+
+    vec4 v, t;
+    for (int i = 0; i < 8; i++) {
+        float *vertex = vertices[i];
+
+        memcpy(t, vertex, sizeof(vec3));
+        t[3] = 1.0f;
+
+        mat4x4_mul_vec4(v, obb->model, t);
+        vertex[0] = o[0] + v[0];
+        vertex[1] = o[1] + v[1];
+        vertex[2] = o[2] + v[2];
+    }
+
+    // Positions
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void *)0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, obb->vbo[0]);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+}
+
 void draw_obb(obb_t *obb, int shader) {
+    buffer_obb(obb);
+
     GLint color_loc = glGetUniformLocation(shader, "color");
     glBindVertexArray(obb->vao);
 

@@ -25,8 +25,13 @@ int main() {
     double last_second = 0;
     int frames = 0;
 
-    obb_t obb;
-    init_obb(&obb);
+    obb_t obb1, obb2;
+
+    init_obb(&obb1);
+    resize_obb(&obb1, 0.5f, 0.25f, 0.25f);
+
+    init_obb(&obb2);
+    roate_obb(&obb2, 0, 0, M_PI_4);
 
     int shader = load_shader("shaders/vertex.glsl", "shaders/fragment.glsl");
     glUseProgram(shader);
@@ -61,16 +66,19 @@ int main() {
         GLint projection_loc = glGetUniformLocation(shader, "projection");
         glUniformMatrix4fv(projection_loc, 1, GL_FALSE, (float *)projection);
 
-        roate_obb(&obb, 0, time_elapsed, time_elapsed);
-        buffer_obb(&obb);
+        position_obb(&obb2, sin(time) * 2, 0, 0);
 
-        draw_obb(&obb, shader);
+
+        draw_obb(&obb1, shader);
+        draw_obb(&obb2, shader);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    free_obb(&obb);
+    free_obb(&obb1);
+    free_obb(&obb2);
+
     glDeleteProgram(shader);
 
     deinit();
