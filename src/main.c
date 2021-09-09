@@ -53,14 +53,9 @@ int main() {
         // Render
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        mat4x4 model, view, projection;
-        mat4x4_identity(model);
-
+        mat4x4 view, projection;
         mat4x4_look_at(view, (vec3){0, 0, 5}, (vec3){0, 0, 0}, (vec3){0, 1, 0});
         mat4x4_perspective(projection, 45.0f, (float)width / (float)height, 0.1f, 100.0f);
-
-        GLint model_loc = glGetUniformLocation(shader, "model");
-        glUniformMatrix4fv(model_loc, 1, GL_FALSE, (float *)model);
 
         GLint view_loc = glGetUniformLocation(shader, "view");
         glUniformMatrix4fv(view_loc, 1, GL_FALSE, (float *)view);
