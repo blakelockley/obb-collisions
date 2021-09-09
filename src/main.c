@@ -9,6 +9,7 @@
 #include "stb_image.h"
 
 #define ENGINE_INCLUDES
+#include "obb.h"
 #include "shader.h"
 
 GLFWwindow *window;
@@ -19,12 +20,18 @@ void deinit();
 int main() {
     init();
 
-    int shader = load_shader("shaders/vertex.glsl", "shaders/fragment.glsl");
-
     char title[16];
 
     double time_elapsed = 0, last_second = 0;
     int frames = 0;
+
+    obb_t obb;
+    memcpy(&obb.center, (vec3){0.0f, 0.0f, 0.0f}, sizeof(vec3));
+    memcpy(&obb.half_side, (vec3){0.5f, 0.5f, 0.5f}, sizeof(vec3));
+    buffer_obb(&obb);
+
+    int shader = load_shader("shaders/vertex.glsl", "shaders/fragment.glsl");
+    glUseProgram(shader);
 
     while (!glfwWindowShouldClose(window)) {
         double current_time = glfwGetTime();
@@ -50,7 +57,9 @@ int main() {
 
         mat4x4 model, view, projection;
         mat4x4_identity(model);
-        mat4x4_look_at(view, (vec3){0, 0, 10}, (vec3){0, 2, 0}, (vec3){0, 1, 0});
+        mat4x4_rotate_Y(model, model, time_elapsed);
+
+        mat4x4_look_at(view, (vec3){0, 0, 5}, (vec3){0, 0, 0}, (vec3){0, 1, 0});
         mat4x4_perspective(projection, 45.0f, (float)width / (float)height, 0.1f, 100.0f);
 
         GLint model_loc = glGetUniformLocation(shader, "model");
@@ -64,6 +73,8 @@ int main() {
 
         GLint color_loc = glGetUniformLocation(shader, "color");
         glUniform3f(color_loc, 1.0f, 1.0f, 1.0f);
+
+        draw_obb(&obb);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
