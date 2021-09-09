@@ -9,6 +9,7 @@
 #include "stb_image.h"
 
 #define ENGINE_INCLUDES
+#include "collision.h"
 #include "obb.h"
 #include "shader.h"
 
@@ -65,6 +66,7 @@ int main() {
         position_obb(&obb2, sin(time) * 2, 0, 0);
         rotate_obb(&obb2, sin(time) * 2, sin(time) * 2, 0);
 
+        obb1.has_collision = obb2.has_collision = check_collision(&obb1, &obb2);
 
         draw_obb(&obb1, shader);
         draw_obb(&obb2, shader);
