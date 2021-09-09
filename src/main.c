@@ -26,12 +26,8 @@ int main() {
     int frames = 0;
 
     obb_t obb1, obb2;
-
     init_obb(&obb1);
-    resize_obb(&obb1, 0.5f, 0.25f, 0.25f);
-
     init_obb(&obb2);
-    roate_obb(&obb2, 0, 0, M_PI_4);
 
     int shader = load_shader("shaders/vertex.glsl", "shaders/fragment.glsl");
     glUseProgram(shader);
@@ -67,6 +63,7 @@ int main() {
         glUniformMatrix4fv(projection_loc, 1, GL_FALSE, (float *)projection);
 
         position_obb(&obb2, sin(time) * 2, 0, 0);
+        rotate_obb(&obb2, sin(time) * 2, sin(time) * 2, 0);
 
 
         draw_obb(&obb1, shader);

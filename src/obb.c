@@ -2,14 +2,12 @@
 
 void init_obb(obb_t *obb) {
     memcpy(&obb->center, (vec3){0.0f, 0.0f, 0.0f}, sizeof(vec3));
-    memcpy(&obb->axis[0], (vec3){1.0f, 0.0f, 0.0f}, sizeof(vec3));
-    memcpy(&obb->axis[1], (vec3){0.0f, 1.0f, 0.0f}, sizeof(vec3));
-    memcpy(&obb->axis[2], (vec3){0.0f, 0.0f, 1.0f}, sizeof(vec3));
+    memcpy(&obb->half_side, (vec3){0.5, 0.5, 0.5}, sizeof(vec3));
 
-    float s = 0.5f;
-    memcpy(&obb->half_side, (vec3){s, s, s}, sizeof(vec3));
+    obb->has_collision = 0;
 
-    mat4x4_identity(obb->model);
+    mat4x4_identity(obb->rotation);
+    update_obb(obb);
 
     glGenVertexArrays(1, &obb->vao);
     glBindVertexArray(obb->vao);
@@ -24,39 +22,12 @@ void init_obb(obb_t *obb) {
         {4, 5}, {5, 6}, {6, 7}, {7, 4}, 
         {0, 4}, {1, 5}, {2, 6}, {3, 7},
         // Axis
-        {8, 9}, {10, 11}, {12, 13},
+        {8, 9}, {8, 10}, {8, 11},
     };
     // clang-format on
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, obb->vbo[1]);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(edges), edges, GL_STATIC_DRAW);
-}
-
-void roate_obb(obb_t *obb, float yaw, float pitch, float roll) {
-    mat4x4_identity(obb->model);
-
-    mat4x4_rotate_Y(obb->model, obb->model, yaw);
-    mat4x4_rotate_X(obb->model, obb->model, pitch);
-    mat4x4_rotate_Z(obb->model, obb->model, roll);
-
-    memcpy(obb->axis[0], (vec3){1.0f, 0.0f, 0.0f}, sizeof(vec3));
-    memcpy(obb->axis[1], (vec3){0.0f, 1.0f, 0.0f}, sizeof(vec3));
-    memcpy(obb->axis[2], (vec3){0.0f, 0.0f, 1.0f}, sizeof(vec3));
-
-    // Rotate axis by model matrix
-
-    vec4 v, t;
-    for (int i = 0; i < 3; i++) {
-        float *axis = obb->axis[i];
-
-        memcpy(t, axis, sizeof(vec3));
-        t[3] = 1.0f;
-
-        mat4x4_mul_vec4(v, obb->model, t);
-        axis[0] = v[0];
-        axis[1] = v[1];
-        axis[2] = v[2];
-    }
 }
 
 void position_obb(obb_t *obb, float x, float y, float z) {
@@ -71,15 +42,37 @@ void resize_obb(obb_t *obb, float x, float y, float z) {
     obb->half_side[2] = z;
 }
 
-void buffer_obb(obb_t *obb) {
-    float *o = obb->center;
+void rotate_obb(obb_t *obb, float yaw, float pitch, float roll) {
+    mat4x4_identity(obb->rotation);
+    mat4x4_rotate_Y(obb->rotation, obb->rotation, yaw);
+    mat4x4_rotate_X(obb->rotation, obb->rotation, pitch);
+    mat4x4_rotate_Z(obb->rotation, obb->rotation, roll);
+}
+
+void update_vector(obb_t *obb, float *vector) {
+    vec4 result, temp;
+
+    memcpy(temp, vector, sizeof(vec3));
+    temp[3] = 1.0f;
+
+    mat4x4_mul_vec4(result, obb->rotation, temp);
+    vector[0] = obb->center[0] + result[0];
+    vector[1] = obb->center[1] + result[1];
+    vector[2] = obb->center[2] + result[2];
+}
+
+void update_obb(obb_t *obb) {
+    // Rotate each axis
+    memcpy(obb->axis[0], (vec3){1.0f, 0.0f, 0.0f}, sizeof(vec3));
+    memcpy(obb->axis[1], (vec3){0.0f, 1.0f, 0.0f}, sizeof(vec3));
+    memcpy(obb->axis[2], (vec3){0.0f, 0.0f, 1.0f}, sizeof(vec3));
+
+    for (int i = 0; i < 3; i++)
+        update_vector(obb, obb->axis[i]);
+
+    // Rotate each corner
     float *hs = obb->half_side;
-
-    float *x_axis = obb->axis[0];
-    float *y_axis = obb->axis[1];
-    float *z_axis = obb->axis[2];
-
-    vec3 vertices[14] = {
+    vec3 corners[8] = {
         {0 - hs[0], 0 - hs[1], 0 - hs[2]},
         {0 + hs[0], 0 - hs[1], 0 - hs[2]},
         {0 + hs[0], 0 + hs[1], 0 - hs[2]},
@@ -88,29 +81,22 @@ void buffer_obb(obb_t *obb) {
         {0 + hs[0], 0 - hs[1], 0 + hs[2]},
         {0 + hs[0], 0 + hs[1], 0 + hs[2]},
         {0 - hs[0], 0 + hs[1], 0 + hs[2]},
-        // Axis
-        {o[0] + x_axis[0], o[1] + x_axis[1], o[2] + x_axis[2]},
-        {o[0] - x_axis[0], o[1] - x_axis[1], o[2] - x_axis[2]},
-        {o[0] + y_axis[0], o[1] + y_axis[1], o[2] + y_axis[2]},
-        {o[0] - y_axis[0], o[1] - y_axis[1], o[2] - y_axis[2]},
-        {o[0] + z_axis[0], o[1] + z_axis[1], o[2] + z_axis[2]},
-        {o[0] - z_axis[0], o[1] - z_axis[1], o[2] - z_axis[2]},
     };
 
-    // Rotate corners by model matrix
+    memcpy(obb->corners, corners, sizeof(corners));
 
-    vec4 v, t;
-    for (int i = 0; i < 8; i++) {
-        float *vertex = vertices[i];
+    for (int i = 0; i < 8; i++)
+        update_vector(obb, obb->corners[i]);
+}
 
-        memcpy(t, vertex, sizeof(vec3));
-        t[3] = 1.0f;
+void buffer_obb(obb_t *obb) {
+    vec3 vertices[12];
+    memcpy(vertices, obb->corners, sizeof(obb->corners));
 
-        mat4x4_mul_vec4(v, obb->model, t);
-        vertex[0] = o[0] + v[0];
-        vertex[1] = o[1] + v[1];
-        vertex[2] = o[2] + v[2];
-    }
+    memcpy(vertices + 8, obb->center, sizeof(vec3));
+    memcpy(vertices + 9, obb->axis[0], sizeof(vec3));
+    memcpy(vertices + 10, obb->axis[1], sizeof(vec3));
+    memcpy(vertices + 11, obb->axis[2], sizeof(vec3));
 
     // Positions
     glEnableVertexAttribArray(0);
@@ -121,22 +107,27 @@ void buffer_obb(obb_t *obb) {
 }
 
 void draw_obb(obb_t *obb, int shader) {
+    update_obb(obb);
     buffer_obb(obb);
 
     GLint color_loc = glGetUniformLocation(shader, "color");
     glBindVertexArray(obb->vao);
 
-    glUniform3f(color_loc, 1.0f, 1.0f, 1.0f);
+    if (obb->has_collision)
+        glUniform3f(color_loc, 1.0f, 0.75f, 0.0f);
+    else
+        glUniform3f(color_loc, 1.0f, 1.0f, 1.0f);
+
     glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, (void *)0);
 
     glUniform3f(color_loc, 1.0f, 0.0f, 0.0f);
-    glDrawElements(GL_LINES, 3, GL_UNSIGNED_INT, (void *)(sizeof(unsigned int) * 24));
+    glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, (void *)(sizeof(unsigned int) * 24));
 
     glUniform3f(color_loc, 0.0f, 1.0f, 0.0f);
-    glDrawElements(GL_LINES, 3, GL_UNSIGNED_INT, (void *)(sizeof(unsigned int) * 26));
+    glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, (void *)(sizeof(unsigned int) * 26));
 
     glUniform3f(color_loc, 0.0f, 0.0f, 1.0f);
-    glDrawElements(GL_LINES, 3, GL_UNSIGNED_INT, (void *)(sizeof(unsigned int) * 28));
+    glDrawElements(GL_LINES, 2, GL_UNSIGNED_INT, (void *)(sizeof(unsigned int) * 28));
 }
 
 void free_obb(obb_t *obb) {
