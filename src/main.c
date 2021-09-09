@@ -22,7 +22,7 @@ int main() {
 
     char title[16];
 
-    double time_elapsed = 0, last_second = 0;
+    double last_second = 0;
     int frames = 0;
 
     obb_t obb;
@@ -32,19 +32,17 @@ int main() {
     glUseProgram(shader);
 
     while (!glfwWindowShouldClose(window)) {
-        double current_time = glfwGetTime();
-        double delta = current_time - time_elapsed;
-        time_elapsed = current_time;
+        double time = glfwGetTime();
 
         frames++;
-        if (current_time - last_second > 1.0) {
-            double fps = frames / (current_time - last_second);
+        if (time - last_second > 1.0) {
+            double fps = frames / (time - last_second);
 
             sprintf(title, "FPS: %.2f", fps);
             glfwSetWindowTitle(window, title);
 
             frames = 0;
-            last_second = current_time;
+            last_second = time;
         }
 
         int width, height;
