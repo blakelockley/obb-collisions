@@ -15,7 +15,7 @@ struct _obb_t {
 typedef struct _obb_t obb_t;
 
 void buffer_obb(obb_t* obb);
-void draw_obb(obb_t* obb);
+void draw_obb(obb_t* obb, int shader);
 void free_obb(obb_t* obb);
 
 #endif  // OBB_H
