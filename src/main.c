@@ -15,6 +15,8 @@
 
 GLFWwindow *window;
 
+int paused = 0;
+
 void init();
 void deinit();
 
@@ -22,9 +24,10 @@ int main() {
     init();
 
     char title[16];
-
-    double last_second = 0;
     int frames = 0;
+
+    double play_time = 0.0f;
+    double previous_time = 0.0f, last_second = 0.0f;
 
     obb_t obb1, obb2;
     init_obb(&obb1);
@@ -34,17 +37,22 @@ int main() {
     glUseProgram(shader);
 
     while (!glfwWindowShouldClose(window)) {
-        double time = glfwGetTime();
+        double current_time = glfwGetTime();
+        double delta = current_time - previous_time;
+        previous_time = current_time;
+
+        if (!paused)
+            play_time += delta;
 
         frames++;
-        if (time - last_second > 1.0) {
-            double fps = frames / (time - last_second);
+        if (current_time - last_second > 1.0) {
+            double fps = frames / (current_time - last_second);
 
             sprintf(title, "FPS: %.2f", fps);
             glfwSetWindowTitle(window, title);
 
             frames = 0;
-            last_second = time;
+            last_second = current_time;
         }
 
         int width, height;
@@ -63,10 +71,17 @@ int main() {
         GLint projection_loc = glGetUniformLocation(shader, "projection");
         glUniformMatrix4fv(projection_loc, 1, GL_FALSE, (float *)projection);
 
-        position_obb(&obb2, sin(time) * 2, 0, 0);
-        rotate_obb(&obb2, sin(time) * 2, sin(time) * 2, 0);
+        if (!paused) {
+            float t = play_time * 0.5f;
 
-        obb1.has_collision = obb2.has_collision = check_collision(&obb1, &obb2);
+            position_obb(&obb1, -1, cos(t), 0);
+            rotate_obb(&obb1, cos(t) * 2, cos(t) * 2, 0);
+
+            position_obb(&obb2, sin(t) * 2, 0, 0);
+            rotate_obb(&obb2, sin(t) * 2, sin(t) * 2, 0);
+
+            obb1.has_collision = obb2.has_collision = check_collision(&obb1, &obb2);
+        }
 
         draw_obb(&obb1, shader);
         draw_obb(&obb2, shader);
@@ -91,6 +106,9 @@ void error_callback(int error, const char *description) {
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+        paused = !paused;
 }
 
 void init() {
