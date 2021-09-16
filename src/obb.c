@@ -55,16 +55,16 @@ void rotate_obb(obb_t *obb, float yaw, float pitch, float roll) {
     mat4x4_rotate_Z(obb->rotation, obb->rotation, roll);
 }
 
-void update_vector(obb_t *obb, float *vector) {
+void update_vector(obb_t *obb, float *vector, float *center) {
     vec4 result, temp;
 
     memcpy(temp, vector, sizeof(vec3));
     temp[3] = 1.0f;
 
     mat4x4_mul_vec4(result, obb->rotation, temp);
-    vector[0] = obb->center[0] + result[0];
-    vector[1] = obb->center[1] + result[1];
-    vector[2] = obb->center[2] + result[2];
+    vector[0] = center[0] + result[0];
+    vector[1] = center[1] + result[1];
+    vector[2] = center[2] + result[2];
 }
 
 void update_obb(obb_t *obb) {
@@ -74,7 +74,7 @@ void update_obb(obb_t *obb) {
     memcpy(obb->axis[2], (vec3){0.0f, 0.0f, 1.0f}, sizeof(vec3));
 
     for (int i = 0; i < 3; i++)
-        update_vector(obb, obb->axis[i]);
+        update_vector(obb, obb->axis[i], (vec3){0.0f, 0.0f, 0.0f});
 
     // Rotate each corner
     float *hs = obb->half_side;
@@ -92,7 +92,7 @@ void update_obb(obb_t *obb) {
     memcpy(obb->corners, corners, sizeof(corners));
 
     for (int i = 0; i < 8; i++)
-        update_vector(obb, obb->corners[i]);
+        update_vector(obb, obb->corners[i], obb->center);
 }
 
 void buffer_obb(obb_t *obb) {
@@ -100,10 +100,15 @@ void buffer_obb(obb_t *obb) {
     memcpy(vertices, obb->corners, sizeof(obb->corners));
 
     memcpy(vertices + 8, obb->center, sizeof(vec3));
-    memcpy(vertices + 9, obb->axis[0], sizeof(vec3));
-    memcpy(vertices + 10, obb->axis[1], sizeof(vec3));
-    memcpy(vertices + 11, obb->axis[2], sizeof(vec3));
 
+    for (int i = 0; i < 3; i++) {
+        vec3 temp;
+        memcpy(temp, obb->axis[i], sizeof(vec3));
+        temp[0] += obb->center[0];
+        temp[1] += obb->center[1];
+        temp[2] += obb->center[2];
+
+        memcpy(vertices + 9 + i, temp, sizeof(vec3));
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, obb->vbo);
