@@ -14,7 +14,7 @@ struct _obb_t {
 
     int has_collision;
 
-    GLuint vao, vbo[2];
+    GLuint vao, vbo, ebo;
 };
 
 typedef struct _obb_t obb_t;

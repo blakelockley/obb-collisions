@@ -9,13 +9,6 @@ void init_obb(obb_t *obb) {
     mat4x4_identity(obb->rotation);
     update_obb(obb);
 
-    glGenVertexArrays(1, &obb->vao);
-    glBindVertexArray(obb->vao);
-
-    glGenBuffers(2, obb->vbo);
-
-    // Edges
-
     // clang-format off
     u_int32_t edges[15][2] = {
         {0, 1}, {1, 2}, {2, 3}, {3, 0},
@@ -26,8 +19,21 @@ void init_obb(obb_t *obb) {
     };
     // clang-format on
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, obb->vbo[1]);
+    glGenVertexArrays(1, &obb->vao);
+    glBindVertexArray(obb->vao);
+
+    // Edges
+    glGenBuffers(1, &obb->ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, obb->ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(edges), edges, GL_STATIC_DRAW);
+
+    // Vertices
+    glGenBuffers(1, &obb->vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, obb->vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * 12, NULL, GL_DYNAMIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void *)0);  // Attrib pointer for currently bound buffer
 }
 
 void position_obb(obb_t *obb, float x, float y, float z) {
@@ -98,12 +104,10 @@ void buffer_obb(obb_t *obb) {
     memcpy(vertices + 10, obb->axis[1], sizeof(vec3));
     memcpy(vertices + 11, obb->axis[2], sizeof(vec3));
 
-    // Positions
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void *)0);
+    }
 
-    glBindBuffer(GL_ARRAY_BUFFER, obb->vbo[0]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, obb->vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
 }
 
 void draw_obb(obb_t *obb, int shader) {
@@ -132,5 +136,6 @@ void draw_obb(obb_t *obb, int shader) {
 
 void free_obb(obb_t *obb) {
     glDeleteVertexArrays(1, &obb->vao);
-    glDeleteBuffers(2, obb->vbo);
+    glDeleteBuffers(1, &obb->vbo);
+    glDeleteBuffers(1, &obb->ebo);
 }
